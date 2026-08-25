@@ -2,7 +2,7 @@ const canvas = document.getElementById("sky");
 const ctx = canvas.getContext("2d");
 
 
-import { generate_stars } from "./calculs.js";
+import { generate_stars, xy_to_azalt } from "./calculs.js";
 import jsonData from "../pressets/stars.json" with { type: "json" };
 
 let stars = [];
@@ -10,6 +10,7 @@ let cam_az = 0;
 let cam_alt = 0;
 let scale = 1;
 let startX=0, startY = 0, newX = 0, newY = 0
+let mouse_pos = []
 
 function updateStars() {
     stars = generate_stars(
@@ -35,8 +36,13 @@ function updateCamera(az, alt) {
 }
 
 function updateScale(new_scale) {
+    const azalt0 = xy_to_azalt(mouse_pos ,canvas.width, canvas.height, scale, cam_az, cam_alt)
     scale = Math.min(200,Math.max(0.4,new_scale));
-    updateStars();
+    const azalt1 = xy_to_azalt(mouse_pos,canvas.width, canvas.height, scale, cam_az, cam_alt)
+    const new_cam_az = cam_az + azalt0[0] - azalt1[0]
+    const new_cam_alt = cam_alt + azalt0[1] - azalt1[1]
+    console.log(azalt0,azalt1)
+    updateCamera(new_cam_az, new_cam_alt)
 }
 
 function drawStars() {
@@ -92,9 +98,13 @@ function mouseMoveHandler(e) {
 function mouseWheelHandler(e){
     updateScale(scale*(1-e.deltaY/1000))
 }
+function mousePosHandler(e){
+    mouse_pos = [e.clientX,e.clientY]
+}
 
 window.addEventListener("resize", resize);
 window.addEventListener("mousedown", mouseDownHandler);
 window.addEventListener("wheel", mouseWheelHandler)
+window.addEventListener('mousemove', mousePosHandler) 
 
 resize();
