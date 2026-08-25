@@ -58,9 +58,6 @@ export function xy_to_azalt(xy, screen_width, screen_height, scale, cam_az,cam_a
     const az = center_az + atan2(X * sin(c), rho * cos(center_alt) * cos(c) - Y * sin(center_alt) * sin(c))
     const az_deg = (degrees(az) + 360) % 360
     const alt_deg = degrees(alt)
-    console.log(rho)
-    console.log(center_az)
-    console.log(center_alt)
     return [az_deg, alt_deg]
 }
 function color_to_hex(color, L) {

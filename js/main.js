@@ -41,7 +41,6 @@ function updateScale(new_scale) {
     const azalt1 = xy_to_azalt(mouse_pos,canvas.width, canvas.height, scale, cam_az, cam_alt)
     const new_cam_az = cam_az + azalt0[0] - azalt1[0]
     const new_cam_alt = cam_alt + azalt0[1] - azalt1[1]
-    console.log(azalt0,azalt1)
     updateCamera(new_cam_az, new_cam_alt)
 }
 
