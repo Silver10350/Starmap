@@ -1,7 +1,7 @@
 import { radians, degrees, sin, cos, asin, atan2, atan, sqrt, min } from "./math.js";
 
 
-function radec_to_azalt(ra, dec, lst, lat) {
+export function radec_to_azalt(ra, dec, lst, lat) {
     // Angle horaire
     const H = radians((lst - ra) % 360)
     const dec_rad = radians(dec)
@@ -17,9 +17,7 @@ function radec_to_azalt(ra, dec, lst, lat) {
     return [azalt, alt_deg]
 }
 
-function azalt_to_xy(az, alt, cam_az, cam_alt, scale, screen_width, screen_height) {
-    const az_rad = radians(az)
-    const alt_rad = radians(alt)
+function azalt_to_xy(az_rad, alt_rad, cam_az, cam_alt, fov, screen_width, screen_height) {
     const center_az_rad = radians(cam_az)
     const center_alt_rad = radians(cam_alt)
     const width = screen_width
@@ -29,19 +27,19 @@ function azalt_to_xy(az, alt, cam_az, cam_alt, scale, screen_width, screen_heigh
     if (denominator <= 0) {
         return 'None'
     }
-    const screen_scale = min(width, height) * scale
+    const screen_scale = Math.min(width, height) /radians(fov)
     const k = 2 / denominator
     const x = width/2 + screen_scale * k * cos(alt_rad) * sin(az_diff)
     const y = height/2 - screen_scale * k * (cos(center_alt_rad)*sin(alt_rad) - sin(center_alt_rad)*cos(alt_rad)*cos(az_diff))
     return [x, y]
 }
 
-export function xy_to_azalt(xy, screen_width, screen_height, scale, cam_az,cam_alt) {
+export function xy_to_azalt(xy, screen_width, screen_height, fov, cam_az,cam_alt) {
     const x = xy[0]
     const y = xy[1]
     const width = screen_width
     const height = screen_height
-    const screen_scale = Math.min(width, height) * scale
+    const screen_scale = Math.min(width, height) / radians(fov)
     // Coordonnées normalisées
     const X = (x - width / 2) / screen_scale
     const Y = -(y - height / 2) / screen_scale
@@ -67,27 +65,44 @@ function color_to_hex(color, L) {
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-function mag_to_radius(m,scale) {
+
+export function get_color(color, mag, fov) {
+    const m0 = 10;
+    const maxMagnitude = m0 + 4 * Math.log10(60/fov);
+    const L1 =  1 - (mag / maxMagnitude/1.2);
+    return color_to_hex(color, L1)
+}
+
+export function get_radius(m, fov) {
     const r0 = 6;
-    const radius = r0 * Math.pow(10, -m / 6) * Math.pow(scale, 0.5);
+    const radius = r0 * Math.pow(10, -m / 8) * Math.pow(60/fov, 0.5);
     return Math.min(radius,5)
 }
 
-export function generate_stars(stars, width, height, lst, lat, cam_az, cam_alt, scale) {
-    const stars_pos_list = []
-    for (let i = 0; i < stars.length; i++) {
-        const star = stars[i];
-        const radius =  mag_to_radius(star.magnitude,scale)
-        const m0 = 6;
-        const maxMagnitude = m0 + 5 * Math.log10(scale);
-    
-        const L1 =  1 - (star.magnitude / maxMagnitude/1.2);
-        if (star.magnitude < maxMagnitude) {
-            const azalt = radec_to_azalt(star.ra, star.dec, lst, lat);
-            const xy = azalt_to_xy(azalt[0], azalt[1], cam_az, cam_alt, scale, width, height);
-            const name_should_display = star.magnitude < maxMagnitude -6
-            stars_pos_list.push({"x": xy[0], "y": xy[1], "name": star.name, "color": color_to_hex(star.color, L1), "radius": radius, "name_should_display": name_should_display});
-        }
+export function get_xy(az, alt, cam, fov, canvas) {
+    const width = canvas.width;
+    const height = canvas.height;
+    return azalt_to_xy(az, alt, cam.az, cam.alt, fov, width, height)
+}
+
+function get_angle_distance(az1, alt1, az2, alt2) {
+    const az1_rad = radians(az1);
+    const alt1_rad = radians(alt1);
+    const az2_rad = radians(az2);
+    const alt2_rad = radians(alt2);
+    const angle_distance = Math.acos(sin(alt1_rad) * sin(alt2_rad) + cos(alt1_rad) * cos(alt2_rad) * cos(az2_rad - az1_rad));
+    return degrees(angle_distance);
+}
+
+export function is_star_in_fov(az, alt, cam, fov) {
+    if (get_angle_distance(az, alt, cam.az, cam.alt) > fov/2) {
+        return false;
     }
-    return stars_pos_list
+    return true;
+}
+export function pos_distance(x1,y1,x2,y2) {
+    return Math.sqrt((x1-x2)**2+(y1-y2)**2)
+}
+export function angle_distance(az1,alt1,az2,alt2) {
+    return degrees(Math.acos(sin(radians(alt1))*sin(radians(alt2))+cos(radians(alt1))*cos(radians(alt2))*cos(radians(az2-az1))))
 }
