@@ -9,7 +9,7 @@ let cam = {az:0, alt:0}
 let fov = 60;
 let startX=0, startY = 0, newX = 0, newY = 0
 let mouse_pos = []
-let selectionpos = null
+let selectedStarId = null
 let is_moving = false
 
 let pointers = new Map();
@@ -41,10 +41,11 @@ function updateStarsApp() {
     for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
         star.radius = get_radius(star.magnitude, fov);
-        star.should_display = star.radius > 0.6;
+        star.should_display = star.radius > 0.7;
         if (star.should_display) {
             star.draw_color = get_color(star.color, star.magnitude, fov);
             star.name_should_display = star.radius > 4.5;
+            star.can_be_selected = star.radius > 1
         }
     }
     drawStars()
@@ -93,10 +94,23 @@ function drawStars() {
             );
             
             ctx.fill();
+            ctx.fillStyle = "white";
             if (star.name_should_display) {
-                ctx.fillStyle = "white";
                 ctx.font = "12px Arial";
                 ctx.fillText(star.name, star.x + 5, star.y+10);
+            }
+            ctx.beginPath()
+            if (star.id == selectedStarId){
+                ctx.arc(
+                    star.x,
+                    star.y,
+                    star.radius*5+10,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'white';
+                ctx.stroke();
             }
         }
     }
@@ -149,15 +163,16 @@ function mouseMoveHandler(e){
         }
 
         if (is_moving){
-            let dx = startX - e.clientX;
-            let dy = startY - e.clientY;
+            let [az,alt] = xy_to_azalt([e.clientX,e.clientY], canvas.width,canvas.height, fov, cam.az, cam.alt)
+            let start_azalt = xy_to_azalt([startX,startY], canvas.width,canvas.height, fov, cam.az, cam.alt)
+            let daz = start_azalt[0]-az
+            let dalt = start_azalt[1]-alt
 
             startX = e.clientX;
             startY = e.clientY;
 
             updateCamera(
-                cam.az + dx*(fov/500),
-                cam.alt - dy*(fov/500)
+                cam.az+daz,cam.alt+dalt
             );
         }
     }
@@ -189,17 +204,81 @@ function mousePosHandler(e){
     mouse_pos = [e.clientX,e.clientY]
 }
 function mouseClickHandler(e){
-    if (is_moving== false){
-        selectionpos = [e.clientX, e.clientY]
-        console.log(selectionpos)
+
+    if (is_moving == false){
+
+        selectStar(e.clientX, e.clientY);
     }
 }
+function showStarInfo(star){
+    // cercle
+    drawStars()
 
-canvas.addEventListener("resize", resize);
+    document.getElementById("star-name").textContent =
+        star.name;
+    let t = null
+    if(star.alias.length!=0){t = ("Alias : "+ star.alias.join(", "))}
+    document.getElementById("star-alias").textContent =
+        t
+
+    document.getElementById("star-constellation").textContent =
+        "Constellation : " + star.constellation;
+
+    document.getElementById("star-magnitude").textContent =
+        "Magnitude : " + Math.round(star.magnitude*100)/100;
+
+    document.getElementById("star-coordinates").textContent =
+        "RA : " + star.ra + " | DEC : " + star.dec;
+
+    document.getElementById("star-info").style.display = "block";
+}
+
+function hideStarInfo(){
+    document.getElementById("star-info").style.display = "none";
+    drawStars();
+}
+function selectStar(x, y){
+
+    selectedStarId = null;
+    let minDistance = Infinity;
+
+    for (const star of stars){
+
+        if (!star.can_be_selected) continue;
+
+        const distance = pos_distance(
+            x, y,
+            star.x, star.y
+        )*(3+star.magnitude);
+
+        if (distance < minDistance && distance < 200){
+            minDistance = distance;
+            selectedStarId = star.id;
+        }
+    }
+
+    if (selectedStarId){
+        showStarInfo(stars.find(u => u.id === selectedStarId));
+    }
+    else{
+        hideStarInfo();
+    }
+}
+function resetSelection(){
+    selectedStarId = null;
+
+    hideStarInfo();
+
+    
+}
+
+window.addEventListener("resize", resize);
 canvas.addEventListener("pointerdown", mouseDownHandler);
 canvas.addEventListener("wheel", mouseWheelHandler)
 canvas.addEventListener('pointermove', mousePosHandler) 
 canvas.addEventListener("click",mouseClickHandler)
+document.getElementById("close-star-info")
+    .addEventListener("click", resetSelection);
 
 
 initStars();
