@@ -277,8 +277,7 @@ canvas.addEventListener("pointerdown", mouseDownHandler);
 canvas.addEventListener("wheel", mouseWheelHandler)
 canvas.addEventListener('pointermove', mousePosHandler) 
 canvas.addEventListener("click",mouseClickHandler)
-document.getElementById("close-star-info")
-    .addEventListener("click", resetSelection);
+document.getElementById("close-star-info").addEventListener("click", resetSelection);
 
 
 initStars();
