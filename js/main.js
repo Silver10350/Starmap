@@ -9,7 +9,7 @@ let cam = {az:0, alt:0}
 let fov = 60;
 let startX=0, startY = 0, newX = 0, newY = 0
 let mouse_pos = []
-let selectedStarId = null
+let selectedStar = null
 let is_moving = false
 
 let pointers = new Map();
@@ -30,7 +30,7 @@ function initStars() {
 function updateStarsPos() {
     for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
-        if (star.should_display) {
+        if (star.should_display || (selectedStar != null && star.id === selectedStar.id)) {
             [star.x, star.y] = get_xy(star.az_rad, star.alt_rad, cam, fov, canvas)
         }
         
@@ -99,21 +99,24 @@ function drawStars() {
                 ctx.font = "12px Arial";
                 ctx.fillText(star.name, star.x + 5, star.y+10);
             }
-            ctx.beginPath()
-            if (star.id == selectedStarId){
-                ctx.arc(
-                    star.x,
-                    star.y,
-                    star.radius*5+10,
-                    0,
-                    Math.PI * 2
-                );
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = 'white';
-                ctx.stroke();
-            }
+        
         }
     }
+    
+    if (selectedStar !=null){
+        selectedStar = stars.find(u=>u.id === selectedStar.id)
+        ctx.beginPath()
+        ctx.arc(
+            selectedStar.x,
+            selectedStar.y,
+            selectedStar.radius*5+10,
+            0,
+            Math.PI * 2
+        );
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
+    } 
 }
 
 function mouseDownHandler(e) {
@@ -239,7 +242,7 @@ function hideStarInfo(){
 }
 function selectStar(x, y){
 
-    selectedStarId = null;
+    selectedStar = null;
     let minDistance = Infinity;
 
     for (const star of stars){
@@ -253,19 +256,19 @@ function selectStar(x, y){
 
         if (distance < minDistance && distance < 200){
             minDistance = distance;
-            selectedStarId = star.id;
+            selectedStar = star;
         }
     }
 
-    if (selectedStarId){
-        showStarInfo(stars.find(u => u.id === selectedStarId));
+    if (selectedStar){
+        showStarInfo(selectedStar);
     }
     else{
         hideStarInfo();
     }
 }
 function resetSelection(){
-    selectedStarId = null;
+    selectedStar = null;
 
     hideStarInfo();
 
@@ -274,9 +277,9 @@ function resetSelection(){
 
 window.addEventListener("resize", resize);
 canvas.addEventListener("pointerdown", mouseDownHandler);
-canvas.addEventListener("wheel", mouseWheelHandler)
-canvas.addEventListener('pointermove', mousePosHandler) 
-canvas.addEventListener("click",mouseClickHandler)
+canvas.addEventListener("wheel", mouseWheelHandler);
+canvas.addEventListener('pointermove', mousePosHandler);
+canvas.addEventListener("click",mouseClickHandler);
 document.getElementById("close-star-info").addEventListener("click", resetSelection);
 
 
