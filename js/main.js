@@ -136,9 +136,15 @@ function mouseDownHandler(e) {
 }
 
 function mouseUpHandler(e){
+    if (is_moving == false){
 
+        selectStar(e.clientX, e.clientY);
+    }
     pointers.delete(e.pointerId);
-
+    if (pointers.size >= 2){
+        startX = e.clientX;
+        startY = e.clientY;
+    }
     if (pointers.size < 2){
         pinchDistance = null;
     }
@@ -206,13 +212,6 @@ function mouseWheelHandler(e){
 function mousePosHandler(e){
     mouse_pos = [e.clientX,e.clientY]
 }
-function mouseClickHandler(e){
-
-    if (is_moving == false){
-
-        selectStar(e.clientX, e.clientY);
-    }
-}
 function showStarInfo(star){
     // cercle
     drawStars()
@@ -229,9 +228,8 @@ function showStarInfo(star){
 
     document.getElementById("star-magnitude").textContent =
         "Magnitude : " + Math.round(star.magnitude*100)/100;
-
     document.getElementById("star-coordinates").textContent =
-        "RA : " + star.ra + " | DEC : " + star.dec;
+        "Ra/Dec : "+star.ra_hms[0]+"h "+star.ra_hms[1]+"m "+star.ra_hms[2]+"s "+star.dec_dms[0]+star.dec_dms[1]+"° "+star.dec_dms[2]+"' "+star.dec_dms[3]+'"'
 
     document.getElementById("star-info").style.display = "block";
 }
@@ -279,7 +277,6 @@ window.addEventListener("resize", resize);
 canvas.addEventListener("pointerdown", mouseDownHandler);
 canvas.addEventListener("wheel", mouseWheelHandler);
 canvas.addEventListener('pointermove', mousePosHandler);
-canvas.addEventListener("click",mouseClickHandler);
 document.getElementById("close-star-info").addEventListener("click", resetSelection);
 
 
