@@ -1,7 +1,7 @@
 const canvas = document.getElementById("sky");
 const ctx = canvas.getContext("2d");
 
-import { get_xy, get_radius, get_color, xy_to_azalt, radec_to_azalt,pos_distance,angle_distance} from "./calculs.js";
+import { get_xy, get_radius, get_color, xy_to_azalt, radec_to_azalt,pos_distance,angle_distance,deg_to_dms,deg_to_hms,updateLST} from "./calculs.js";
 import jsonData from "../presets/stars.json" with { type: "json" };
 
 let stars = jsonData;
@@ -11,16 +11,22 @@ let startX=0, startY = 0, newX = 0, newY = 0
 let mouse_pos = []
 let selectedStar = null
 let is_moving = false
-
+let [lat,long] = [90,0]
+if ("geolocation" in navigator) {
+    /* geolocation is available */
+    navigator.geolocation.getCurrentPosition((position) => {
+    [lat,long] = [position.coords.latitude, position.coords.longitude]}
+    );
+}
+let LST = updateLST(long)
 let pointers = new Map();
 let pinchDistance = null;
 
 function initStars() {
     for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
-        [star.az, star.alt] = radec_to_azalt(star.ra, star.dec, 0, 90);
-        star.az_rad = star.az * Math.PI / 180;
-        star.alt_rad = star.alt * Math.PI / 180;
+        star.ra_hms = deg_to_hms(star.ra)
+        star.dec_dms = deg_to_dms(star.dec)
     }
     updateStarsApp();
     resize();
@@ -30,6 +36,9 @@ function initStars() {
 function updateStarsPos() {
     for (let i = 0; i < stars.length; i++) {
         const star = stars[i];
+        [star.az, star.alt] = radec_to_azalt(star.ra, star.dec, LST, lat);
+        star.az_rad = star.az * Math.PI / 180;
+        star.alt_rad = star.alt * Math.PI / 180;
         if (star.should_display || (selectedStar != null && star.id === selectedStar.id)) {
             [star.x, star.y] = get_xy(star.az_rad, star.alt_rad, cam, fov, canvas)
         }
@@ -136,10 +145,7 @@ function mouseDownHandler(e) {
 }
 
 function mouseUpHandler(e){
-    if (is_moving == false){
-
-        selectStar(e.clientX, e.clientY);
-    }
+    
     pointers.delete(e.pointerId);
     if (pointers.size >= 2){
         startX = e.clientX;
@@ -150,6 +156,10 @@ function mouseUpHandler(e){
     }
 
     if (pointers.size === 0){
+        if (is_moving == false){
+
+            selectStar(e.clientX, e.clientY);
+        }
         canvas.removeEventListener("pointermove", mouseMoveHandler);
         canvas.removeEventListener("pointerup", mouseUpHandler);
     }
@@ -228,8 +238,13 @@ function showStarInfo(star){
 
     document.getElementById("star-magnitude").textContent =
         "Magnitude : " + Math.round(star.magnitude*100)/100;
+
+    document.getElementById("star-fixcoordinates").textContent =
+        "Ra/Dec : "+star.ra_hms[0]+"h "+star.ra_hms[1]+"m "+star.ra_hms[2]+"s"+" / "+star.dec_dms[0]+star.dec_dms[1]+"° "+star.dec_dms[2]+"' "+star.dec_dms[3]+'"'
+    const az_hms = deg_to_dms(star.az)
+    const alt_dms = deg_to_dms(star.alt)
     document.getElementById("star-coordinates").textContent =
-        "Ra/Dec : "+star.ra_hms[0]+"h "+star.ra_hms[1]+"m "+star.ra_hms[2]+"s "+star.dec_dms[0]+star.dec_dms[1]+"° "+star.dec_dms[2]+"' "+star.dec_dms[3]+'"'
+        "Az/Alt : "+az_hms[1]+"° "+az_hms[2]+"' "+az_hms[3]+'"'+" / "+alt_dms[0]+alt_dms[1]+"° "+alt_dms[2]+"' "+alt_dms[3]+'"'
 
     document.getElementById("star-info").style.display = "block";
 }
@@ -269,8 +284,14 @@ function resetSelection(){
     selectedStar = null;
 
     hideStarInfo();
+}
 
-    
+function update_time(){
+    LST = updateLST(long)
+    if (selectedStar!= null){
+        showStarInfo(selectedStar)
+    }
+    updateStarsPos()
 }
 
 window.addEventListener("resize", resize);
@@ -279,5 +300,5 @@ canvas.addEventListener("wheel", mouseWheelHandler);
 canvas.addEventListener('pointermove', mousePosHandler);
 document.getElementById("close-star-info").addEventListener("click", resetSelection);
 
-
+const intervalId = setInterval(update_time, 1000);
 initStars();

@@ -106,3 +106,59 @@ export function pos_distance(x1,y1,x2,y2) {
 export function angle_distance(az1,alt1,az2,alt2) {
     return degrees(Math.acos(sin(radians(alt1))*sin(radians(alt2))+cos(radians(alt1))*cos(radians(alt2))*cos(radians(az2-az1))))
 }
+
+export function deg_to_hms(ra){
+    ///Convertit des degrés en (heures, minutes, secondes).
+
+    ra /= 15
+
+    const h = Math.floor(ra)
+    const m = Math.floor((ra - h) * 60)
+    const s = (ra - h - m / 60) * 3600
+
+    return [h, m, Math.round(s*10)/10]
+}
+
+export function deg_to_dms(dec){
+    //Convertit des degrés en (degrés, minutes, secondes).
+    let sign = ""
+    if (dec < 0){sign = "-"}
+    else{sign = "+"}
+    
+    dec = Math.abs(dec)
+
+    const d = Math.floor(dec)
+    const m = Math.floor((dec - d) * 60)
+    const s = (dec - d - m / 60) * 3600
+
+    return [sign, d, m, Math.round(s*10)/10]
+}
+
+export function updateLST(longitude){
+    const now = new Date();
+    
+    // 1. Calculate Julian Date (JD)
+    // Convert to milliseconds since 1970-01-01 UTC
+    const timeMs = now.getTime(); 
+    // Julian Date at 1970-01-01 12:00:00 UTC is 2440587.5
+    let jd = (timeMs / 86400000) + 2440587.5;
+    
+    // 2. Calculate T (centuries since J2000.0)
+    const T = (jd - 2451545.0) / 36525.0;
+    
+    // 3. Calculate Greenwich Mean Sidereal Time (GMST) in degrees
+    // Standard Meeus formula: 280.46061837 + 360.98564736629 * (JD - 2451545) + ...
+    let gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * Math.pow(T, 2) - Math.pow(T, 3) / 38710000.0;
+    
+    // 4. Calculate Local Mean Sidereal Time (LMST / LST)
+    // Add longitude: East longitude is positive (+), West longitude is negative (-)
+    let lstDegrees = gmst + longitude;
+    
+    // 5. Reduce to a 0-360 degree range
+    lstDegrees = lstDegrees % 360;
+    if (lstDegrees < 0) {
+        lstDegrees += 360;
+    }
+
+    return lstDegrees
+}
